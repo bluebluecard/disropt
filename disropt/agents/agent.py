@@ -49,10 +49,12 @@ class Agent():
         self.in_neighbors = None
         self.out_neighbors = None
         self.set_neighbors(in_neighbors, out_neighbors)
-
+    
         self.in_weights = {}
         self.set_weights(in_weights, out_weights, auto_local)
-
+        
+        self.nproc = None
+        self.step_num = 1
         self.problem = None
 
     def set_neighbors(self, in_neighbors: list, out_neighbors: list):
