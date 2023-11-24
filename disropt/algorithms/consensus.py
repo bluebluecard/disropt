@@ -5,7 +5,7 @@ import random
 from typing import List, Tuple
 from ..agents import Agent
 from .algorithm import Algorithm
-
+from ..utils import graph_constructor
 
 class Consensus(Algorithm):
     """Consensus Algorithm [OlSa07]_ 
@@ -33,14 +33,15 @@ class Consensus(Algorithm):
         enable_log (bool): True for enabling log
     """
 
-    def __init__(self, agent: Agent, initial_condition: np.ndarray, enable_log: bool=False):
+    #def __init__(self, agent: Agent, initial_condition: np.ndarray, enable_log: bool=False):
+    #    super(Consensus, self).__init__(agent, enable_log)
+    def __init__(self, agent: Agent, initial_condition: np.ndarray,time_varying:bool=False, enable_log: bool=False):
         super(Consensus, self).__init__(agent, enable_log)
-
         self.x0 = initial_condition
         self.x = initial_condition
-
+        self.time_vary = time_varying
         self.shape = self.x.shape
-
+        self.iter = 0
         self.x_neigh = {}
 
     def _update_local_solution(self, x: np.ndarray, **kwargs):
@@ -62,6 +63,16 @@ class Consensus(Algorithm):
     def iterate_run(self, **kwargs):
         """Run a single iterate of the algorithm
         """
+        if self.time_vary:
+            
+            local_rank = self.agent.id
+
+            Adj = graph_constructor.binomial_random_graph(self.agent.nproc,p=0.2,seed=self.iter)
+            W = graph_constructor.metropolis_hastings(Adj)
+            self.agent.set_neighbors(in_neighbors=np.nonzero(Adj[local_rank, :])[0].tolist(),
+                            out_neighbors=np.nonzero(Adj[:, local_rank])[0].tolist())
+            self.agent.set_weights(in_weights=W[local_rank, :].tolist())
+
         data = self.agent.neighbors_exchange(self.x)
 
         for neigh in data:
@@ -90,6 +101,7 @@ class Consensus(Algorithm):
             self.sequence = np.zeros(dims)
 
         for k in range(iterations):
+            self.iter = (self.agent.step_num - 1)*iterations + k
             self.iterate_run(**kwargs)
 
             if self.enable_log:
